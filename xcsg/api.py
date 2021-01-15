@@ -21,7 +21,8 @@
 import glm
 
 from lxml import etree
-from xcsg.impl import Obj2D, mk_node, FlattenerOp2D, MoreChildren, OneChild, Obj3D, TwoChildren, FlattenerOp3D
+from xcsg.impl import Obj2D, mk_node, FlattenerOp2D, MoreChildren, OneChild, Obj3D, TwoChildren, FlattenerOp3D, \
+    pre_process
 
 
 # -------------------------------------------------------
@@ -62,8 +63,8 @@ class Rectangle(Obj2D):
 #                    2D operations
 # -------------------------------------------------------
 class Union2D(FlattenerOp2D):
-    def __init__(self):
-        super().__init__('union2d')
+    def __init__(self, flatten=True):
+        super().__init__('union2d', flatten)
 
 
 class Diff2D(FlattenerOp2D):
@@ -217,8 +218,8 @@ class Sweep(Obj3D):
 #                    3D operations
 # -------------------------------------------------------
 class Union3D(FlattenerOp3D):
-    def __init__(self):
-        super().__init__('union3d')
+    def __init__(self, flatten=True):
+        super().__init__('union3d', flatten)
 
 
 class Diff3D(FlattenerOp3D):
@@ -261,7 +262,7 @@ def to_vec3(v):
 def to_vec4(v):
     if isinstance(v, glm.vec4):
         return v
-    if isinstance(v, (list, tuple)):
+    if isinstance(v, (list, tuple, glm.vec3, glm.vec2)):
         if len(v) < 4:
             return glm.vec4(to_vec3(v), 0)
         return glm.vec4(v)
@@ -322,6 +323,7 @@ def mirror(axis, obj):
 
 def to_xml(obj, secant_tolerance=0.01):
     assert isinstance(obj, Obj3D)
+    pre_process(obj)
     root = mk_node('xcsg', version='1.0', secant_tolerance=secant_tolerance)
     root.append(obj.to_element())
     return root

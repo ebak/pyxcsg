@@ -136,12 +136,13 @@ def flatten(parent_obj, *objs):
 
 class FlattenerOp2D(Obj2D):
 
-    def __init__(self, node_name, **attrs):
+    def __init__(self, node_name, flatten=True, **attrs):
         super().__init__(node_name, MoreChildren(Obj2D), **attrs)
+        self.flatten = flatten
 
     def __call__(self, *objs):
         self.child_validator.validate(*objs)
-        self.objs = flatten(self, *objs)
+        self.objs = flatten(self, *objs) if self.flatten else objs
         return self
 
 
@@ -161,10 +162,42 @@ class Obj3D(Obj):
 
 class FlattenerOp3D(Obj3D):
 
-    def __init__(self, node_name, **attrs):
+    def __init__(self, node_name, flatten=True, **attrs):
         super().__init__(node_name, MoreChildren(Obj3D), **attrs)
+        self.flatten = flatten
 
     def __call__(self, *objs):
         self.child_validator.validate(*objs)
-        self.objs = flatten(self, *objs)
+        self.objs = flatten(self, *objs) if self.flatten else objs
         return self
+
+
+def tree_struct(op_cls, parts, depth=0):
+    if len(parts) <= 3:
+        # print(f'{depth}. leaf_part: {parts[0]}, objs: {parts[0].objs}')
+        return parts
+    new_parts = []
+    odd = len(parts) & 1 == 1
+    for i in range(int(len(parts) / 2)):
+        idx = 2 * i
+        nidx = idx + 1
+        p0, p1 = parts[idx], parts[nidx]
+        part = (
+            op_cls(flatten=False)(p0, p1, parts[nidx + 1])
+            if odd and nidx == len(parts) - 2 else
+            op_cls(flatten=False)(p0, p1))
+        new_parts.append(part)
+        # print(f'{depth}. new_parts: {new_parts}')
+    return tree_struct(op_cls, new_parts, depth + 1)
+
+
+def tree_children(op):
+    op.objs = tree_struct(type(op), op.objs)
+
+
+def pre_process(obj, depth=0):
+    from xcsg.api import Union2D, Union3D     # cyclic import
+    if isinstance(obj, (Union2D, Union3D)):
+        tree_children(obj)
+    for o in obj.objs:
+        pre_process(o, depth + 1)
