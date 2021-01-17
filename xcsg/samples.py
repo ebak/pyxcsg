@@ -184,7 +184,7 @@ def transforms():
         render(f'Transforms/{name}', obj)
 
     stuff = Cylinder(r=3, h=10) + tr([0, 0, 16], Sphere(r=3))
-    stuff += mirror(axis=[1, 0, 1], obj=stuff)
+    stuff += mirror(normal=[1, 0, 1], obj=stuff)
     rdr('mirror', stuff)
     #
     rdr('rotate', rotate(ang=math.radians(30), axis=Y_AXIS, obj=Cylinder(r=1, h=20)))
