@@ -17,13 +17,15 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-from typing import List, Tuple, Union
+from typing import List, Tuple, Union, Iterable
 
 import glm
 
 from lxml import etree
+
+from xcsg.common import VecLike, GLMVec
 from xcsg.impl import Obj2D, mk_node, FlattenerOp2D, MoreChildren, OneChild, Obj3D, TwoChildren, FlattenerOp3D, \
-    pre_process, Obj
+    pre_process, Obj, _pad, GLM_VEC_LEN
 
 
 # -------------------------------------------------------
@@ -54,14 +56,14 @@ class Square(Obj2D):
 
 class Polygon(Obj2D):
 
-    def __init__(self, vertices: List[glm.vec2]):
+    def __init__(self, vertices: Iterable[VecLike]):
         """
         `See. <https://github.com/arnholm/xcsg/wiki/polygon>`__
 
         :param vertices:
         """
         super().__init__('polygon')
-        self.vertices = vertices
+        self.vertices = [to_vec2(v) for v in vertices]
 
     def _get_child_nodes(self):
         verts = mk_node('vertices')
@@ -257,7 +259,7 @@ class Cylinder(Obj3D):
 
 class Polyhedron(Obj3D):
 
-    def __init__(self, vertices: List[glm.vec3], faces: List[Tuple] = None):
+    def __init__(self, vertices: Iterable[VecLike], faces: Iterable[Tuple[int, ...]] = None):
         """
         `See. <https://github.com/arnholm/xcsg/wiki/polyhedron>`__
 
@@ -265,7 +267,7 @@ class Polyhedron(Obj3D):
         :param faces: list of vertex index tuples, can be None to create a convex hull of vertices
         """
         super().__init__('polyhedron')
-        self.vertices, self.faces = vertices, faces
+        self.vertices, self.faces = [to_vec3(v) for v in vertices], faces
 
     def _get_child_nodes(self):
         verts = mk_node('vertices')
@@ -339,24 +341,24 @@ class TransformExtrude(Obj3D):
 
 class Sweep(Obj3D):
 
-    def __init__(self, spline_path: List[Tuple[glm.vec3, glm.vec3]]):
+    def __init__(self, spline_path: Iterable[Tuple[VecLike, VecLike]]):
         """
         Extrude 2D shape around a spline to form a solid.
 
         `See. <https://github.com/arnholm/xcsg/wiki/sweep>`__
 
-        :param spline_path: [(p: vec3, v: vec3), ...]
+        :param spline_path: [(point, up_vector), ...]
         """
         super().__init__('sweep', OneChild(Obj2D))
-        self.spline_path = spline_path
+        self.spline_path = [(to_vec3(p), to_vec3(uv)) for p, uv in spline_path]
 
     def _get_child_nodes(self):
         e = mk_node('sweep')
         e.append(self.objs[0].to_element())
         sp = mk_node('spline_path')
         e.append(sp)
-        for p, v in self.spline_path:
-            sp.append(mk_node('cpoint', x=p.x, y=p.y, z=p.z, vx=v.x, vy=v.y, vz=v.z))
+        for p, uv in self.spline_path:
+            sp.append(mk_node('cpoint', x=p.x, y=p.y, z=p.z, vx=uv.x, vy=uv.y, vz=uv.z))
         return e
 
 
@@ -429,39 +431,25 @@ class Minkowski3D(Obj3D):
         super().__init__('minkowski3d', MoreChildren(Obj3D))
 
 
-def to_vec2(v: Union[List, Tuple, glm.vec1, glm.vec2]) -> glm.vec2:
-    if isinstance(v, (list, tuple, glm.vec1)):
-        if len(v) < 1:
-            v = list(v) + [0 for _ in range(1 - len(v))]
-            return glm.vec2(v)
-        return glm.vec2(v[:2])
-    elif not isinstance(v, glm.vec2):
-        return glm.vec2(v)
-    return v
-
-
-def to_vec3(v: Union[List, Tuple, glm.vec1, glm.vec2, glm.vec3]) -> glm.vec3:
-    if isinstance(v, (list, tuple, glm.vec1, glm.vec2)):
-        if len(v) < 3:
-            v = list(v) + [0 for _ in range(3 - len(v))]
-            return glm.vec3(v)
-        return glm.vec3(v)
-    elif not isinstance(v, glm.vec3):
-        return glm.vec3(v)
-    return v
-
-
-def to_vec4(v: Union[List, Tuple, glm.vec1, glm.vec2, glm.vec3, glm.vec4]) -> glm.vec4:
-    if isinstance(v, glm.vec4):
+def to_vec(vec_cls: GLMVec, v: VecLike, pad=0) -> GLMVec:
+    if isinstance(v, vec_cls):
         return v
-    if isinstance(v, (list, tuple, glm.vec3, glm.vec2)):
-        if len(v) < 4:
-            return glm.vec4(to_vec3(v), 0)
-        return glm.vec4(v)
-    assert False
+    return vec_cls(*_pad(v, new_len=GLM_VEC_LEN[vec_cls], pad=pad))
 
 
-def translate(v: glm.vec3, obj: Obj) -> Obj:
+def to_vec2(v: VecLike, pad=0) -> glm.vec2:
+    return to_vec(glm.vec2, v, pad)
+
+
+def to_vec3(v: VecLike, pad=0) -> glm.vec3:
+    return to_vec(glm.vec3, v, pad)
+
+
+def to_vec4(v: VecLike, pad=0) -> glm.vec4:
+    return to_vec(glm.vec4, v, pad)
+
+
+def translate(v: VecLike, obj: Obj) -> Obj:
     """
     Translates a 2D or 3D object.
 
@@ -480,16 +468,14 @@ def translate(v: glm.vec3, obj: Obj) -> Obj:
         print(f'modified mm:\n{obj.model_matrix}')
     else:
         l = glm.vec4(obj.model_matrix[3]) + v
-        # print(f'{obj.__class__.__name__} l: {l}')
         obj.model_matrix[3] = l
-        # print(f'modified mm:\n{obj.model_matrix}')
     return obj
 
 
 tr = move_to = translate
 
 
-def rotate(ang: float, axis: glm.vec3, obj: Obj) -> Obj:
+def rotate(ang: float, axis: VecLike, obj: Obj) -> Obj:
     """
     Rotates a 2D or 3D object around an axis.
 
@@ -500,12 +486,12 @@ def rotate(ang: float, axis: glm.vec3, obj: Obj) -> Obj:
     """
     obj = obj.copy()
     rm = glm.mat4x4()
-    rm = glm.rotate(rm, ang, axis)
+    rm = glm.rotate(rm, ang, to_vec3(axis))
     obj.model_matrix = rm * obj.model_matrix
     return obj
 
 
-def scale(v: Union[List, Tuple, glm.vec3], obj: Obj) -> Obj:
+def scale(v: VecLike, obj: Obj) -> Obj:
     """
     Scales an object along the X,Y,Z axes.
 
@@ -514,10 +500,8 @@ def scale(v: Union[List, Tuple, glm.vec3], obj: Obj) -> Obj:
     :return: the new scaled object
     """
     obj = obj.copy()
-    # set missing dimensions to 1
-    if isinstance(v, (list, tuple)) and len(v) < 3:
-        v = list(v) + [1 for _ in range(3 - len(v))]
-    obj.model_matrix = glm.scale(obj.model_matrix, to_vec3(v))
+    v = to_vec3(v, pad=1)
+    obj.model_matrix = glm.scale(obj.model_matrix, v)
     return obj
 
 
@@ -534,7 +518,7 @@ def mirror_vector(normal_unit: glm.vec3, v: glm.vec3) -> glm.vec3:
     return v - scaled_axis
 
 
-def mirror(normal: glm.vec3, obj: Obj) -> Obj:
+def mirror(normal: VecLike, obj: Obj) -> Obj:
     """
     Mirrors an object to a plane. The plane is residing on the origin.
 
@@ -566,7 +550,7 @@ def to_xml(obj: Obj3D, secant_tolerance: float = 0.01) -> etree.Element:
     return root
 
 
-def save(file_path: str, obj: Obj, secant_tolerance: float = 0.01) -> None:
+def save(file_path: str, obj: Obj3D, secant_tolerance: float = 0.01) -> None:
     """
     Saves the object into a .xcsg file.
 

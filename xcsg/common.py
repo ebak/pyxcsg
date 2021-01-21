@@ -20,6 +20,7 @@
 
 
 import glm
+from typing import List, Tuple, Union
 
 X_AXIS = glm.vec3(1, 0, 0)
 Y_AXIS = glm.vec3(0, 1, 0)
@@ -27,3 +28,5 @@ Z_AXIS = glm.vec3(0, 0, 1)
 
 IDENTITY = glm.identity(glm.mat4x4)
 
+GLMVec = Union[glm.vec1, glm.vec2, glm.vec3, glm.vec4]
+VecLike = Union[List, Tuple, GLMVec]

@@ -20,9 +20,10 @@
 
 import glm
 from lxml import etree
+from typing import List
 from copy import deepcopy
 
-from xcsg.common import IDENTITY
+from xcsg.common import IDENTITY, VecLike
 
 
 def mk_node(name, **attrs):
@@ -170,6 +171,17 @@ class FlattenerOp3D(Obj3D):
         self.child_validator.validate(*objs)
         self.objs = flatten(self, *objs) if self.flatten else objs
         return self
+
+
+GLM_VEC_LEN = {glm.vec2: 2, glm.vec3: 3, glm.vec4: 4}
+
+
+def _pad(v: VecLike, new_len: int, pad: int) -> List[float]:
+    to_pad = new_len - len(v)
+    if to_pad < 0:
+        return list(v[:new_len])
+    pad_list = [pad for _ in range(to_pad)]
+    return list(v) + pad_list
 
 
 def tree_struct(op_cls, parts, depth=0):

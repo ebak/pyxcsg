@@ -22,7 +22,6 @@
 import os
 import math
 import shutil
-from glm import vec2, vec3
 
 from xcsg import save, LinearExtrude, tr, Circle, Square, Polygon, Rectangle, Sect2D, Fill2D, Hull2D, scale, Offset2D, \
     Minkowski2D, Projection2D, Cylinder, rotate, Z_AXIS, Cone, Cube, Box, Polyhedron, Sphere, mirror, Sect3D, move_to, \
@@ -55,7 +54,7 @@ def obj2d():
     #
     polygon = LinearExtrude(dz=1)(
         Polygon(vertices=[
-            vec2(0, 0), vec2(20, 0), vec2(20, 20), vec2(10, 30), vec2(0, 20)]))
+            (0, 0), (20, 0), (20, 20), (10, 30), (0, 20)]))
     rdr('polygon', polygon)
     #
     rectangle = LinearExtrude(dz=1)(Rectangle(dx=20, dy=10))
@@ -109,21 +108,21 @@ def op2d_to_3d():
             Offset2D(delta=10, round=True)(Square(size=60, center=True)),
             tr([0, 0, 50], Circle(r=30))))
     #
-    v = vec3(0, 1, 0)
+    v = (0, 1, 0)
     rdr(
         'sweep',
         Sweep(
-            spline_path=(
-                (vec3(0, 0, 0), v),
-                (vec3(0, -1.17, 10), v),
-                (vec3(0, -4.13, 20), v),
-                (vec3(0, -7.50, 30), v),
-                (vec3(0, -9.70, 40), v),
-                (vec3(0, -9.70, 50), v),
-                (vec3(0, -7.50, 60), v),
-                (vec3(0, -4.13, 70), v),
-                (vec3(0, -1.17, 80), v),
-                (vec3(0,  0.00, 90), v))
+            spline_path=[
+                ((0, 0, 0), v),
+                ((0, -1.17, 10), v),
+                ((0, -4.13, 20), v),
+                ((0, -7.50, 30), v),
+                ((0, -9.70, 40), v),
+                ((0, -9.70, 50), v),
+                ((0, -7.50, 60), v),
+                ((0, -4.13, 70), v),
+                ((0, -1.17, 80), v),
+                ((0,  0.00, 90), v)]
         )(
             Rectangle(dx=8, dy=1, center=True) + Rectangle(dx=1, dy=6)))
 
@@ -155,8 +154,7 @@ def obj3d():
         'polyhedron',
         Polyhedron(
             vertices=[
-                vec3(-10, -10, -10), vec3(10, -10, -10), vec3(10, 10, -10), vec3(-10, 10, -10),
-                vec3(0, 0, 10)],
+                (-10, -10, -10), (10, -10, -10), (10, 10, -10), (-10, 10, -10), (0, 0, 10)],
             faces=[(3, 2, 1, 0), (0, 1, 4), (1, 2, 4), (2, 3, 4), (3, 0, 4)]))
     #
     rdr('sphere', Sphere(r=50))
